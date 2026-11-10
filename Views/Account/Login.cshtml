@@ -1,0 +1,72 @@
+﻿@model Shawermawy.Models.ViewModels.LoginViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Shawermawy</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body class="auth-body" style="background-image: linear-gradient(135deg, rgba(15,15,15,0.92), rgba(232,160,32,0.15)), url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80'); background-size: cover; background-position: center; background-attachment: fixed;">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <i class="fa-solid fa-bowl-food"></i>
+                <h1>Shawermawy</h1>
+                <p>Welcome back! Sign in to your account.</p>
+            </div>
+
+            <form asp-action="Login" method="post">
+                <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+                <div class="form-group">
+                    <label asp-for="UsernameOrEmail"><i class="fa-solid fa-user"></i> Username or Email</label>
+                    <input asp-for="UsernameOrEmail" class="form-input" placeholder="Enter username or email" autocomplete="off" />
+                    <span asp-validation-for="UsernameOrEmail" class="field-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Password"><i class="fa-solid fa-lock"></i> Password</label>
+                    <div class="input-wrapper">
+                        <input asp-for="Password" class="form-input" type="password" placeholder="Enter your password" id="passwordInput" />
+                        <button type="button" class="toggle-password" onclick="togglePassword()">
+                            <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Password" class="field-error"></span>
+                </div>
+
+                <button type="submit" class="btn-primary btn-full">
+                    <i class="fa-solid fa-right-to-bracket"></i> Sign In
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="/Account/Register">Register here</a></p>
+            </div>
+        </div>
+
+        <button class="theme-toggle-auth" onclick="toggleTheme()">
+            <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
+    </div>
+    <script src="~/js/site.js"></script>
+    <script>
+        function togglePassword() {
+        const input = document.getElementById('passwordInput');
+        const icon = document.getElementById('eyeIcon');
+        if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-solid fa-eye-slash';
+        } else {
+        input.type = 'password';
+        icon.className = 'fa-solid fa-eye';
+        }
+        }
+    </script>
+</body>
+</html>

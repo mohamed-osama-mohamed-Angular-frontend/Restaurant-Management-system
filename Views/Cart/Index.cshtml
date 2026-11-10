@@ -1,0 +1,176 @@
+﻿@model Shawermawy.Models.ViewModels.CartViewModel
+@{
+    ViewData["Title"] = "My Cart";
+}
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-cart-shopping"></i> My Order List</h1>
+    <p>Review your items before placing an order</p>
+</div>
+
+<div class="cart-page">
+    @if (!Model.CartItems.Any())
+    {
+        <div class="empty-state">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <h2>Your cart is empty</h2>
+            <p>Browse our menu and add some delicious items!</p>
+            <a href="/Menu" class="btn-primary">
+                <i class="fa-solid fa-utensils"></i> View Menu
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="cart-layout">
+            <div class="cart-items">
+                @foreach (var item in Model.CartItems)
+                {
+                    <div class="cart-item" id="ci-@item.CartItemId">
+                        <img src="@(item.MenuItem?.ImageUrl ?? "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=80&q=70")"
+                             alt="@item.MenuItem?.Name"
+                             class="cart-item-img"
+                             onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=80&q=70'" />
+                        <div class="item-info">
+                            <h3>@item.MenuItem?.Name</h3>
+                            <span class="item-price">EGP @item.MenuItem?.Price.ToString("F2") each</span>
+                        </div>
+                        <div class="item-controls">
+                            <button class="qty-btn"
+                                    onclick="updateQty(@item.CartItemId, @(item.Quantity - 1))">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
+                            <span class="qty" id="qty-@item.CartItemId">@item.Quantity</span>
+                            <button class="qty-btn"
+                                    onclick="updateQty(@item.CartItemId, @(item.Quantity + 1))">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                            <button class="btn-remove"
+                                    onclick="removeItem(@item.CartItemId)">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="item-subtotal">
+                            EGP @(((item.MenuItem?.Price ?? 0) * item.Quantity).ToString("F2"))
+                        </div>
+                    </div>
+                }
+
+                <button class="btn-danger btn-full mt-1" onclick="clearCart()">
+                    <i class="fa-solid fa-trash-can"></i> Clear All Items
+                </button>
+            </div>
+
+            <div class="cart-summary">
+                <h2><i class="fa-solid fa-receipt"></i> Order Summary</h2>
+
+                <div class="summary-row">
+                    <span>Items (@Model.CartItems.Sum(x => x.Quantity))</span>
+                    <span>EGP @Model.Total.ToString("F2")</span>
+                </div>
+                <div class="summary-row">
+                    <span>Delivery</span>
+                    <span class="free"><i class="fa-solid fa-check"></i> Free</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>EGP @Model.Total.ToString("F2")</span>
+                </div>
+
+                <h3 class="payment-title">
+                    <i class="fa-solid fa-credit-card"></i> Payment Method
+                </h3>
+
+                <div class="payment-options">
+                    <label class="payment-option">
+                        <input type="radio" name="payment" value="Cash" checked />
+                        <div class="payment-card">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                            <span>Cash on Delivery</span>
+                        </div>
+                    </label>
+                    <label class="payment-option">
+                        <input type="radio" name="payment" value="Online" />
+                        <div class="payment-card">
+                            <i class="fa-solid fa-credit-card"></i>
+                            <span>Online Payment</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="onlinePaymentForm" style="display:none" class="pseudo-payment">
+                    <h4><i class="fa-solid fa-lock"></i> Card Details <span class="demo-tag">DEMO</span></h4>
+                    <input class="form-input" placeholder="Card Number" maxlength="19" id="cardNum" />
+                    <div class="card-row">
+                        <input class="form-input" placeholder="MM/YY" maxlength="5" />
+                        <input class="form-input" placeholder="CVV" maxlength="3" />
+                    </div>
+                    <input class="form-input" placeholder="Cardholder Name" />
+                    <p class="pseudo-note">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        Demo only — no real transaction processed
+                    </p>
+                </div>
+
+                <button class="btn-primary btn-full" onclick="placeOrder()">
+                    <i class="fa-solid fa-check-circle"></i> Confirm Order
+                </button>
+
+                <a href="/Menu" class="btn-ghost btn-full" style="margin-top:0.75rem; text-align:center; display:flex; justify-content:center;">
+                    <i class="fa-solid fa-arrow-left"></i> Continue Shopping
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function updateQty(id, qty) {
+            fetch('/Cart/UpdateQuantity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'cartItemId=' + id + '&quantity=' + qty
+            }).then(function () { location.reload(); });
+        }
+
+        function removeItem(id) {
+            fetch('/Cart/Remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'cartItemId=' + id
+            }).then(function () { location.reload(); });
+        }
+
+        function clearCart() {
+            if (!confirm('Remove all items from your cart?')) return;
+            fetch('/Cart/Clear', { method: 'POST' })
+                .then(function () { location.reload(); });
+        }
+
+        function placeOrder() {
+            var payment = document.querySelector('input[name="payment"]:checked').value;
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/Cart/Checkout';
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'paymentMethod';
+            input.value = payment;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        document.querySelectorAll('input[name="payment"]').forEach(function (r) {
+            r.addEventListener('change', function () {
+                document.getElementById('onlinePaymentForm').style.display =
+                    this.value === 'Online' ? 'block' : 'none';
+            });
+        });
+
+        document.getElementById('cardNum')?.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+        });
+    </script>
+}

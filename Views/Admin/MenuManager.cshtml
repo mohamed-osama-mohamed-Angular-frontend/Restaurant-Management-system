@@ -1,0 +1,534 @@
+﻿@model Shawermawy.Models.ViewModels.MenuManagerViewModel
+@{
+    ViewData["Title"] = "Menu Manager";
+}
+
+<style>
+    /* Prevent any flash/shift on this page specifically */
+    body {
+        overflow-y: scroll !important;
+    }
+
+    .mm-table-wrap {
+        min-height: 400px; /* reserve space before rows render */
+    }
+</style>
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-utensils"></i> Menu Manager</h1>
+    <p>Add, edit, or remove items from the menu</p>
+</div>
+
+<!-- Toolbar -->
+<div class="mm-toolbar">
+    <div class="mm-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" class="form-input"
+               placeholder="Search items..." oninput="filterItems()" />
+    </div>
+    <div class="mm-toolbar-actions">
+        <button class="btn-secondary" onclick="openCategoryModal()">
+            <i class="fa-solid fa-folder-plus"></i> New Category
+        </button>
+        <button class="btn-primary" onclick="openAddModal()">
+            <i class="fa-solid fa-plus"></i> Add Item
+        </button>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="mm-stats">
+    <div class="mm-stat">
+        <span class="mm-stat-num" id="totalCount">@Model.MenuItems.Count</span>
+        <span>Total Items</span>
+    </div>
+    <div class="mm-stat">
+        <span class="mm-stat-num" id="availableCount">@Model.MenuItems.Count(m => m.IsAvailable)</span>
+        <span>Available</span>
+    </div>
+    <div class="mm-stat">
+        <span class="mm-stat-num">@Model.Categories.Count</span>
+        <span>Categories</span>
+    </div>
+</div>
+
+<!-- Category Filter -->
+<div class="mm-filters">
+    <button class="filter-chip active" data-cat="all">All</button>
+    @foreach (var cat in Model.Categories)
+    {
+        <button class="filter-chip" data-cat="@cat.CategoryId">
+            <i class="fa-solid @cat.IconClass"></i> @cat.Name
+        </button>
+    }
+</div>
+
+<!-- Items Table -->
+<div class="mm-table-wrap">
+    <table class="mm-table" id="itemsTable">
+        <thead>
+            <tr>
+                <th style="width:80px">Image</th>
+                <th style="width:180px">Name</th>
+                <th style="width:130px">Category</th>
+                <th>Description</th>
+                <th style="width:110px">Price</th>
+                <th style="width:120px">Status</th>
+                <th style="width:90px">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="itemsBody">
+            @foreach (var item in Model.MenuItems)
+            {
+                <tr id="row-@item.ItemId"
+                    data-cat="@item.CategoryId"
+                    data-name="@item.Name.ToLower()">
+
+                    <td>
+                        <img src="@(item.ImageUrl ?? "/images/default-food.jpg")"
+                             alt="@item.Name"
+                             class="mm-thumb"
+                             width="56"
+                             height="56"
+                             loading="lazy"
+                             onerror="this.style.visibility='hidden'" />
+                    </td>
+
+                    <td><strong>@item.Name</strong></td>
+
+                    <td>
+                        <span class="cat-badge">
+                            <i class="fa-solid @item.Category?.IconClass"></i>
+                            @item.Category?.Name
+                        </span>
+                    </td>
+
+                    <td class="desc-cell">@item.Description</td>
+
+                    <td><span class="price-tag">EGP @item.Price.ToString("F2")</span></td>
+
+                    <td>
+                        <button class="avail-toggle @(item.IsAvailable ? "avail-on" : "avail-off")"
+                                id="avail-@item.ItemId"
+                                onclick="toggleAvail(@item.ItemId)">
+                            @(item.IsAvailable ? "✓ Available" : "✗ Hidden")
+                        </button>
+                    </td>
+
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn-icon btn-edit"
+                                    title="Edit"
+                                    onclick="openEditModal(
+                                @item.ItemId,
+                                @item.CategoryId,
+                                '@Html.Raw(item.Name.Replace("'", "\\'"))',
+                                '@Html.Raw((item.Description ?? "").Replace("'", "\\'"))',
+                                @item.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                                '@(item.ImageUrl ?? "")',
+                                @item.IsAvailable.ToString().ToLower())">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="btn-icon btn-del"
+                                    title="Delete"
+                                    onclick="deleteItem(@item.ItemId, '@Html.Raw(item.Name.Replace("'", "\\'"))')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADD / EDIT MODAL
+══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="itemModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 id="modalTitle"><i class="fa-solid fa-plus"></i> Add Menu Item</h2>
+            <button class="modal-close" onclick="closeModal('itemModal')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <input type="hidden" id="formItemId" />
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-tag"></i> Item Name *</label>
+                    <input class="form-input" id="formName" placeholder="e.g. Chicken Shawarma" />
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-folder"></i> Category *</label>
+                    <select class="form-input" id="formCategory">
+                        @foreach (var cat in Model.Categories)
+                        {
+                            <option value="@cat.CategoryId">@cat.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fa-solid fa-align-left"></i> Description</label>
+                <textarea class="form-input form-textarea" id="formDesc"
+                          placeholder="Short description of the item..."
+                          rows="3"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-money-bill"></i> Price (EGP) *</label>
+                    <input class="form-input" id="formPrice" type="number"
+                           step="0.01" min="0" placeholder="0.00" />
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-image"></i> Image URL</label>
+                    <input class="form-input" id="formImage"
+                           placeholder="/images/menu/item.jpg"
+                           oninput="previewImage()" />
+                </div>
+            </div>
+
+            <!-- Image Preview -->
+            <div class="img-preview-wrap">
+                <img id="imgPreview"
+                     src="/images/default-food.jpg"
+                     alt="Preview"
+                     class="img-preview"
+                     onerror="this.src='/images/default-food.jpg'" />
+                <span class="img-preview-label">Image Preview</span>
+            </div>
+
+            <div class="form-group">
+                <label class="toggle-label">
+                    <span><i class="fa-solid fa-eye"></i> Available on Menu</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="formAvailable" checked />
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+            </div>
+
+            <div id="modalError" class="modal-error" style="display:none"></div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="closeModal('itemModal')">Cancel</button>
+            <button class="btn-primary" id="modalSaveBtn" onclick="saveItem()">
+                <i class="fa-solid fa-check"></i> Save Item
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ADD CATEGORY MODAL
+══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="categoryModal">
+    <div class="modal-box modal-box-sm">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-folder-plus"></i> New Category</h2>
+            <button class="modal-close" onclick="closeModal('categoryModal')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Category Name *</label>
+                <input class="form-input" id="catName" placeholder="e.g. Desserts" />
+            </div>
+            <div class="form-group">
+                <label>Font Awesome Icon Class</label>
+                <input class="form-input" id="catIcon" placeholder="fa-ice-cream" />
+                <small style="color:var(--text-muted)">
+                    Find icons at
+                    <a href="https://fontawesome.com/icons" target="_blank">fontawesome.com</a>
+                </small>
+            </div>
+            <div id="catError" class="modal-error" style="display:none"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="closeModal('categoryModal')">Cancel</button>
+            <button class="btn-primary" onclick="saveCategory()">
+                <i class="fa-solid fa-check"></i> Add Category
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+@section Scripts {
+    <script>
+        // ── Modal helpers ────────────────────────────────────────────────
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        // Close on backdrop click
+        document.querySelectorAll('.modal-backdrop').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                if (e.target === this) closeModal(this.id);
+            });
+        });
+
+        // ── ADD modal ────────────────────────────────────────────────────
+        function openAddModal() {
+            document.getElementById('modalTitle').innerHTML =
+                '<i class="fa-solid fa-plus"></i> Add Menu Item';
+            document.getElementById('formItemId').value = '0';
+            document.getElementById('formName').value = '';
+            document.getElementById('formDesc').value = '';
+            document.getElementById('formPrice').value = '';
+            document.getElementById('formImage').value = '';
+            document.getElementById('formAvailable').checked = true;
+            document.getElementById('imgPreview').src = '/images/default-food.jpg';
+            document.getElementById('modalError').style.display = 'none';
+            openModal('itemModal');
+        }
+
+        // ── EDIT modal ───────────────────────────────────────────────────
+        function openEditModal(id, catId, name, desc, price, img, available) {
+            document.getElementById('modalTitle').innerHTML =
+                '<i class="fa-solid fa-pen"></i> Edit Menu Item';
+            document.getElementById('formItemId').value = id;
+            document.getElementById('formCategory').value = catId;
+            document.getElementById('formName').value = name;
+            document.getElementById('formDesc').value = desc;
+            document.getElementById('formPrice').value = price;
+            document.getElementById('formImage').value = img || '';
+            document.getElementById('formAvailable').checked = available;
+            document.getElementById('imgPreview').src = img || '/images/default-food.jpg';
+            document.getElementById('modalError').style.display = 'none';
+            openModal('itemModal');
+        }
+
+        // ── Image preview ────────────────────────────────────────────────
+        function previewImage() {
+            var url = document.getElementById('formImage').value.trim();
+            document.getElementById('imgPreview').src = url || '/images/default-food.jpg';
+        }
+
+        // ── Save (add or edit) ───────────────────────────────────────────
+        function saveItem() {
+            var itemId = document.getElementById('formItemId').value;
+            var name = document.getElementById('formName').value.trim();
+            var catId = document.getElementById('formCategory').value;
+            var desc = document.getElementById('formDesc').value.trim();
+            var price = document.getElementById('formPrice').value;
+            var imageUrl = document.getElementById('formImage').value.trim();
+            var available = document.getElementById('formAvailable').checked;
+            var errBox = document.getElementById('modalError');
+
+            if (!name || !catId || !price) {
+                errBox.textContent = 'Name, category, and price are required.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            var isEdit = itemId !== '0';
+            var endpoint = isEdit ? '/Admin/EditItem' : '/Admin/AddItem';
+            var body = 'ItemId=' + itemId
+                + '&CategoryId=' + catId
+                + '&Name=' + encodeURIComponent(name)
+                + '&Description=' + encodeURIComponent(desc)
+                + '&Price=' + price
+                + '&ImageUrl=' + encodeURIComponent(imageUrl)
+                + '&IsAvailable=' + available;
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.success) {
+                        errBox.textContent = data.message || 'Something went wrong.';
+                        errBox.style.display = 'block';
+                        return;
+                    }
+                    closeModal('itemModal');
+                    showToast(isEdit ? 'Item updated!' : 'Item added!');
+                    if (isEdit) {
+                        updateRow(data);
+                    } else {
+                        addRow(data);
+                        document.getElementById('totalCount').textContent =
+                            parseInt(document.getElementById('totalCount').textContent) + 1;
+                        if (data.isAvailable)
+                            document.getElementById('availableCount').textContent =
+                                parseInt(document.getElementById('availableCount').textContent) + 1;
+                    }
+                });
+        }
+
+        // ── Add new row to table ─────────────────────────────────────────
+        function addRow(d) {
+            var tbody = document.getElementById('itemsBody');
+            var tr = document.createElement('tr');
+            tr.id = 'row-' + d.itemId;
+            tr.dataset.cat = d.categoryId || 0;
+            tr.dataset.name = (d.name || '').toLowerCase();
+            tr.innerHTML = rowHTML(d);
+            tbody.prepend(tr);
+        }
+
+        // ── Update existing row ──────────────────────────────────────────
+        function updateRow(d) {
+            var tr = document.getElementById('row-' + d.itemId);
+            if (tr) tr.innerHTML = rowHTML(d);
+        }
+
+        function rowHTML(d) {
+            var name = (d.name || '').replace(/'/g, "\\'");
+            var desc = (d.description || '').replace(/'/g, "\\'");
+            var img = d.imageUrl || '/images/default-food.jpg';
+            return '<td><img src="' + img + '" class="mm-thumb" width="56" height="56"'
+                + ' onerror="this.style.visibility=\'hidden\'" loading="lazy"/></td>'
+                + '<td><strong>' + (d.name || '') + '</strong></td>'
+                + '<td><span class="cat-badge">' + (d.categoryName || '') + '</span></td>'
+                + '<td class="desc-cell">' + (d.description || '') + '</td>'
+                + '<td><span class="price-tag">EGP ' + d.price + '</span></td>'
+                + '<td><button class="avail-toggle ' + (d.isAvailable ? 'avail-on' : 'avail-off') + '"'
+                + ' id="avail-' + d.itemId + '" onclick="toggleAvail(' + d.itemId + ')">'
+                + (d.isAvailable ? '✓ Available' : '✗ Hidden') + '</button></td>'
+                + '<td><div class="action-btns">'
+                + '<button class="btn-icon btn-edit" onclick="openEditModal(' + d.itemId + ','
+                + (d.categoryId || 0) + ',\'' + name + '\',\'' + desc + '\',' + d.price
+                + ',\'' + (d.imageUrl || '') + '\',' + d.isAvailable + ')">'
+                + '<i class="fa-solid fa-pen"></i></button>'
+                + '<button class="btn-icon btn-del" onclick="deleteItem(' + d.itemId + ',\'' + name + '\')">'
+                + '<i class="fa-solid fa-trash"></i></button>'
+                + '</div></td>';
+        }
+
+        // ── Delete ───────────────────────────────────────────────────────
+        function deleteItem(id, name) {
+            if (!confirm('Hide "' + name + '" from the menu?')) return;
+            fetch('/Admin/DeleteItem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'itemId=' + id
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var btn = document.getElementById('avail-' + id);
+                        if (btn) { btn.textContent = '✗ Hidden'; btn.className = 'avail-toggle avail-off'; }
+                        showToast(name + ' hidden from menu.');
+                    }
+                });
+        }
+
+        // ── Toggle availability ──────────────────────────────────────────
+        function toggleAvail(id) {
+            fetch('/Admin/ToggleAvailability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'itemId=' + id
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var btn = document.getElementById('avail-' + id);
+                        if (btn) {
+                            btn.textContent = data.isAvailable ? '✓ Available' : '✗ Hidden';
+                            btn.className = 'avail-toggle ' + (data.isAvailable ? 'avail-on' : 'avail-off');
+                        }
+                        var delta = data.isAvailable ? 1 : -1;
+                        document.getElementById('availableCount').textContent =
+                            parseInt(document.getElementById('availableCount').textContent) + delta;
+                    }
+                });
+        }
+
+        // ── Category modal ───────────────────────────────────────────────
+        function openCategoryModal() { openModal('categoryModal'); }
+
+        function saveCategory() {
+            var name = document.getElementById('catName').value.trim();
+            var icon = document.getElementById('catIcon').value.trim();
+            var errBox = document.getElementById('catError');
+
+            if (!name) {
+                errBox.textContent = 'Category name is required.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            fetch('/Admin/AddCategory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'name=' + encodeURIComponent(name) + '&iconClass=' + encodeURIComponent(icon)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var opt = new Option(data.name, data.categoryId);
+                        document.getElementById('formCategory').add(opt);
+
+                        var chip = document.createElement('button');
+                        chip.className = 'filter-chip';
+                        chip.dataset.cat = data.categoryId;
+                        chip.textContent = data.name;
+                        chip.addEventListener('click', filterChipClick);
+                        document.querySelector('.mm-filters').appendChild(chip);
+
+                        closeModal('categoryModal');
+                        document.getElementById('catName').value = '';
+                        document.getElementById('catIcon').value = '';
+                        showToast('Category "' + data.name + '" added!');
+                    } else {
+                        errBox.textContent = data.message || 'Error.';
+                        errBox.style.display = 'block';
+                    }
+                });
+        }
+
+        // ── Search / filter ──────────────────────────────────────────────
+        var activeCat = 'all';
+
+        function filterItems() {
+            var q = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('#itemsBody tr').forEach(function (row) {
+                var name = row.dataset.name || '';
+                var catMatch = activeCat === 'all' || row.dataset.cat === activeCat;
+                var txtMatch = name.includes(q);
+                row.style.display = (catMatch && txtMatch) ? '' : 'none';
+            });
+        }
+
+        function filterChipClick() {
+            document.querySelectorAll('.filter-chip').forEach(function (b) {
+                b.classList.remove('active');
+            });
+            this.classList.add('active');
+            activeCat = this.dataset.cat;
+            filterItems();
+        }
+
+        document.querySelectorAll('.filter-chip').forEach(function (b) {
+            b.addEventListener('click', filterChipClick);
+        });
+
+        // ── Toast ────────────────────────────────────────────────────────
+        function showToast(msg) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(function () { t.classList.remove('show'); }, 2500);
+        }
+    </script>
+}

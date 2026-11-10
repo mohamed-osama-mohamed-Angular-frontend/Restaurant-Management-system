@@ -1,0 +1,66 @@
+﻿@model Shawermawy.Models.ViewModels.RegisterViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - Shawermawy</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <i class="fa-solid fa-bowl-food"></i>
+                <h1>Shawermawy</h1>
+                <p>Create your account to start ordering.</p>
+            </div>
+
+            <form asp-action="Register" method="post">
+                <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+                <div class="form-group">
+                    <label asp-for="Username"><i class="fa-solid fa-user"></i> Username</label>
+                    <input asp-for="Username" class="form-input" placeholder="Choose a username" />
+                    <span asp-validation-for="Username" class="field-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Email"><i class="fa-solid fa-envelope"></i> Email</label>
+                    <input asp-for="Email" class="form-input" placeholder="Enter your email" />
+                    <span asp-validation-for="Email" class="field-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="PhoneNumber"><i class="fa-solid fa-phone"></i> Phone Number</label>
+                    <input asp-for="PhoneNumber" class="form-input" placeholder="Enter your phone number" />
+                    <span asp-validation-for="PhoneNumber" class="field-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Password"><i class="fa-solid fa-lock"></i> Password</label>
+                    <input asp-for="Password" class="form-input" type="password" placeholder="Create a password (min 6 chars)" />
+                    <span asp-validation-for="Password" class="field-error"></span>
+                </div>
+
+                <button type="submit" class="btn-primary btn-full">
+                    <i class="fa-solid fa-user-plus"></i> Create Account
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="/Account/Login">Sign in here</a></p>
+            </div>
+        </div>
+
+        <button class="theme-toggle-auth" onclick="toggleTheme()">
+            <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
+    </div>
+    <script src="~/js/site.js"></script>
+</body>
+</html>

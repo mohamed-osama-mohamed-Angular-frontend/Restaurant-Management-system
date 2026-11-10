@@ -1,0 +1,131 @@
+﻿@model List<Shawermawy.Models.Order>
+@{ ViewData["Title"] = "Admin Dashboard"; }
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-shield"></i> Admin Dashboard</h1>
+    <p>Manage orders and customers</p>
+</div>
+
+<div class="admin-stats">
+    <div class="stat-card">
+        <i class="fa-solid fa-clock"></i>
+        <div>
+            <span class="stat-num">@Model.Count(o => o.Status == "OnHold")</span>
+            <span>On Hold</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <i class="fa-solid fa-fire"></i>
+        <div>
+            <span class="stat-num">@Model.Count(o => o.Status == "Cooking")</span>
+            <span>Cooking</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <i class="fa-solid fa-motorcycle"></i>
+        <div>
+            <span class="stat-num">@Model.Count(o => o.Status == "Delivering")</span>
+            <span>Delivering</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <i class="fa-solid fa-door-open"></i>
+        <div>
+            <span class="stat-num">@Model.Count(o => o.Status == "AtDoorstep")</span>
+            <span>At Doorstep</span>
+        </div>
+    </div>
+</div>
+
+<div class="orders-table-wrapper">
+    <h2>All Orders</h2>
+    @if (!Model.Any())
+    {
+        <p class="no-data">No orders yet.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Phone</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Payment</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model)
+                    {
+                        <tr id="row-@o.OrderId">
+                            <td><strong>#@o.OrderId</strong></td>
+                            <td>@o.User?.Username</td>
+                            <td>
+                                <a href="tel:@o.User?.PhoneNumber" class="phone-link">
+                                    <i class="fa-solid fa-phone"></i> @o.User?.PhoneNumber
+                                </a>
+                            </td>
+                            <td>
+                                <div class="order-items-mini">
+                                    @foreach (var oi in o.OrderItems)
+                                    {
+                                        <span>@oi.MenuItem?.Name ×@oi.Quantity</span>
+                                    }
+                                </div>
+                            </td>
+                            <td>EGP @o.TotalAmount.ToString("F2")</td>
+                            <td>@o.PaymentMethod</td>
+                            <td>@o.CreatedAt.ToString("HH:mm")</td>
+                            <td>
+                                <span class="status-badge status-@o.Status.ToLower()" id="status-@o.OrderId">
+                                    @o.Status
+                                </span>
+                            </td>
+                            <td>
+                                <div class="status-controls">
+                                    <select class="status-select" id="sel-@o.OrderId">
+                                        <option value="OnHold" selected="@(o.Status == "OnHold")">On Hold</option>
+                                        <option value="Cooking" selected="@(o.Status == "Cooking")">Cooking</option>
+                                        <option value="Delivering" selected="@(o.Status == "Delivering")">Delivering</option>
+                                        <option value="AtDoorstep" selected="@(o.Status == "AtDoorstep")">At Doorstep</option>
+                                    </select>
+                                    <button class="btn-small btn-primary"
+                                            onclick="updateStatus(@o.OrderId)">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+function updateStatus(orderId) {
+    const status = document.getElementById('sel-' + orderId).value;
+    fetch('/Admin/UpdateStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `orderId=${orderId}&status=${status}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const badge = document.getElementById('status-' + orderId);
+            badge.textContent  = status;
+            badge.className    = `status-badge status-${status.toLowerCase()}`;
+        }
+    });
+}
+</script>
+}

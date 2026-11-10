@@ -1,0 +1,115 @@
+﻿@model List<Shawermawy.Models.Category>
+@{
+    ViewData["Title"] = "Menu";
+}
+
+<div class="menu-hero">
+    <div class="hero-text">
+        <h1><i class="fa-solid fa-bowl-food"></i> Our Menu</h1>
+        <p>Fresh, authentic Middle Eastern flavors made with love</p>
+        <a href="#menuGrid" class="hero-btn">
+            <i class="fa-solid fa-arrow-down"></i> Explore Menu
+        </a>
+    </div>
+</div>
+
+<div class="menu-page">
+    <div class="category-tabs">
+        <button class="tab-btn active" data-category="all">
+            <i class="fa-solid fa-border-all"></i> All
+        </button>
+        @foreach (var cat in Model)
+        {
+            <button class="tab-btn" data-category="cat-@cat.CategoryId">
+                <i class="fa-solid @cat.IconClass"></i> @cat.Name
+            </button>
+        }
+    </div>
+
+    <div class="menu-grid" id="menuGrid">
+        @foreach (var cat in Model)
+        {
+            <div class="category-section cat-@cat.CategoryId">
+                <h2 class="section-title">
+                    <i class="fa-solid @cat.IconClass"></i> @cat.Name
+                </h2>
+                <div class="items-grid">
+                    @foreach (var item in cat.MenuItems)
+                    {
+                        <div class="menu-card">
+                            <div class="card-img">
+                                <img src="@(item.ImageUrl ?? "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80")"
+                                     alt="@item.Name"
+                                     loading="lazy"
+                                     onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80'" />
+                                <div class="card-overlay">
+                                    <button class="btn-add-quick"
+                                            onclick="addToCart(@item.ItemId, '@Html.Raw(item.Name.Replace("'", "\\'"))')">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h3>@item.Name</h3>
+                                <p>@item.Description</p>
+                                <div class="card-footer">
+                                    <span class="price">EGP @item.Price.ToString("F2")</span>
+                                    <button class="btn-add"
+                                            onclick="addToCart(@item.ItemId, '@Html.Raw(item.Name.Replace("'", "\\'"))')">
+                                        <i class="fa-solid fa-cart-plus"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+@section Scripts {
+    <script>
+        function addToCart(itemId, name) {
+            fetch('/Cart/Add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'itemId=' + itemId
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var badge = document.getElementById('cartBadge');
+                        if (badge) {
+                            badge.textContent = data.count;
+                            badge.style.display = 'flex';
+                        }
+                        showToast(name + ' added to cart!');
+                    }
+                });
+        }
+
+        function showToast(msg) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(function () { t.classList.remove('show'); }, 2500);
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.tab-btn').forEach(function (b) {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+                var cat = this.dataset.category;
+                document.querySelectorAll('.category-section').forEach(function (section) {
+                    section.style.display =
+                        (cat === 'all' || section.classList.contains(cat)) ? 'block' : 'none';
+                });
+            });
+        });
+    </script>
+}

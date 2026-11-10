@@ -1,0 +1,129 @@
+﻿@{
+    ViewData["Title"] = "Reviews & Feedback";
+}
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-star"></i> Reviews & Feedback</h1>
+    <p>Your feedback helps us improve. We read every message!</p>
+</div>
+
+<div class="review-page">
+    <div class="review-info-cards">
+        <div class="info-card">
+            <i class="fa-solid fa-star" style="color:#ffc107"></i>
+            <div>
+                <h4>Leave a Review</h4>
+                <p>Share your experience with our food and service</p>
+            </div>
+        </div>
+        <div class="info-card">
+            <i class="fa-solid fa-flag" style="color:#e84040"></i>
+            <div>
+                <h4>Report an Issue</h4>
+                <p>Let us know if something went wrong</p>
+            </div>
+        </div>
+        <div class="info-card">
+            <i class="fa-solid fa-lightbulb" style="color:#2196f3"></i>
+            <div>
+                <h4>Make a Suggestion</h4>
+                <p>Ideas to make Shawermawy even better</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="review-form-card">
+        <h2><i class="fa-solid fa-pen-to-square"></i> Submit Your Feedback</h2>
+
+        <div class="type-selector">
+            <button class="type-btn active" data-type="Review">
+                <i class="fa-solid fa-star"></i> Review
+            </button>
+            <button class="type-btn" data-type="Report">
+                <i class="fa-solid fa-flag"></i> Report
+            </button>
+            <button class="type-btn" data-type="Suggestion">
+                <i class="fa-solid fa-lightbulb"></i> Suggestion
+            </button>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fa-solid fa-heading"></i> Title *</label>
+            <input class="form-input" id="reviewTitle"
+                   placeholder="Brief title for your feedback" />
+        </div>
+
+        <div class="form-group">
+            <label><i class="fa-solid fa-comment"></i> Message *</label>
+            <textarea class="form-input form-textarea"
+                      id="reviewMessage"
+                      placeholder="Share your thoughts in detail..."
+                      rows="6"></textarea>
+        </div>
+
+        <button class="btn-primary btn-full" onclick="submitReview()">
+            <i class="fa-solid fa-paper-plane"></i> Submit Feedback
+        </button>
+
+        <div id="reviewSuccess" class="review-success" style="display:none">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>
+                <strong>Thank you!</strong>
+                <span>Your feedback has been submitted and will be reviewed by our team.</span>
+            </div>
+        </div>
+
+        <div id="reviewError" class="review-error" style="display:none">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>Please fill in all required fields.</span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var selectedType = 'Review';
+
+        document.querySelectorAll('.type-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.type-btn').forEach(function (b) {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+                selectedType = this.dataset.type;
+            });
+        });
+
+        function submitReview() {
+            var title = document.getElementById('reviewTitle').value.trim();
+            var message = document.getElementById('reviewMessage').value.trim();
+            var errBox = document.getElementById('reviewError');
+            var sucBox = document.getElementById('reviewSuccess');
+
+            errBox.style.display = 'none';
+            sucBox.style.display = 'none';
+
+            if (!title || !message) {
+                errBox.style.display = 'flex';
+                return;
+            }
+
+            fetch('/Review/Submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'title=' + encodeURIComponent(title)
+                    + '&message=' + encodeURIComponent(message)
+                    + '&type=' + selectedType
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        document.getElementById('reviewTitle').value = '';
+                        document.getElementById('reviewMessage').value = '';
+                        sucBox.style.display = 'flex';
+                        setTimeout(function () { sucBox.style.display = 'none'; }, 5000);
+                    }
+                });
+        }
+    </script>
+}

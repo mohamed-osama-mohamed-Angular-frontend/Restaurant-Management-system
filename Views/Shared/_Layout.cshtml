@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="https://img.icons8.com/emoji/48/burrito-emoji.png" />
+    <title>@ViewData["Title"] - Shawermawy</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+    @{
+        var isAdmin = Context.Session.GetString("IsAdmin") == "True";
+        var isLoggedIn = Context.Session.GetInt32("UserId") != null;
+        var username = Context.Session.GetString("Username") ?? "";
+        var currentPage = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    }
+
+    @if (isLoggedIn)
+    {
+        <nav class="navbar">
+            <a href="/Menu" class="nav-brand">
+                <i class="fa-solid fa-bowl-food"></i>
+                <span>Shawermawy</span>
+            </a>
+
+            <div class="nav-links">
+                <a href="/Menu/Index"
+                   class="nav-link @(currentPage == "Menu" ? "active" : "")">
+                    <i class="fa-solid fa-utensils"></i> Menu
+                </a>
+
+                <a href="/Cart/Index"
+                   class="nav-link cart-link @(currentPage == "Cart" ? "active" : "")">
+                    <i class="fa-solid fa-cart-shopping"></i> Cart
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </a>
+
+                <a href="/Order/Index"
+                   class="nav-link @(currentPage == "Order" ? "active" : "")">
+                    <i class="fa-solid fa-receipt"></i> My Orders
+                </a>
+
+                <a href="/Review/Index"
+                   class="nav-link @(currentPage == "Review" ? "active" : "")">
+                    <i class="fa-solid fa-star"></i> Reviews
+                </a>
+
+                @if (isAdmin)
+                {
+                    <a href="/Admin/Dashboard"
+                       class="nav-link admin-link @(currentPage == "Admin" ? "active" : "")">
+                        <i class="fa-solid fa-shield"></i> Admin
+                    </a>
+                    <a href="/Admin/MenuManager"
+                       class="nav-link admin-link">
+                        <i class="fa-solid fa-utensils"></i> Menu Manager
+                    </a>
+                    <a href="/Admin/Reviews"
+                       class="nav-link admin-link">
+                        <i class="fa-solid fa-flag"></i> Reports
+                    </a>
+                }
+            </div>
+
+            <div class="nav-actions">
+                <span class="nav-user">
+                    <i class="fa-solid fa-user"></i> @username
+                </span>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <i class="fa-solid fa-moon" id="themeIcon"></i>
+                </button>
+                <a href="/Account/Logout" class="btn-logout" title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </a>
+            </div>
+        </nav>
+    }
+
+    <main class="main-content">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">
+                <i class="fa-solid fa-circle-check"></i> @TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-error">
+                <i class="fa-solid fa-circle-exclamation"></i> @TempData["Error"]
+            </div>
+        }
+        @RenderBody()
+    </main>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+        // Load cart count on every page
+        (function loadCartCount() {
+        fetch('/Cart/GetCount')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+        var badge = document.getElementById('cartBadge');
+        if (badge && data.count > 0) {
+        badge.textContent = data.count;
+        badge.style.display = 'flex';
+        }
+        })
+        .catch(function () { });
+        })();
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

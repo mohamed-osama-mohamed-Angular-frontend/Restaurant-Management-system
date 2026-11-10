@@ -1,0 +1,193 @@
+﻿@model List<Shawermawy.Models.ViewModels.OrderViewModel>
+@{
+    ViewData["Title"] = "My Orders";
+}
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-receipt"></i> My Orders</h1>
+    <p>Track and manage your orders</p>
+</div>
+
+<div class="orders-page">
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <i class="fa-solid fa-receipt"></i>
+            <h2>No orders yet</h2>
+            <p>Your order history will appear here once you place an order.</p>
+            <a href="/Menu" class="btn-primary">
+                <i class="fa-solid fa-utensils"></i> Order Now
+            </a>
+        </div>
+    }
+    else
+    {
+        @foreach (var vm in Model)
+        {
+            <div class="order-card" id="order-@vm.Order.OrderId">
+                <div class="order-header">
+                    <div>
+                        <span class="order-id"># @vm.Order.OrderId</span>
+                        <span class="order-date">
+                            <i class="fa-solid fa-clock"></i>
+                            @vm.Order.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")
+                        </span>
+                    </div>
+                    <span class="status-badge status-@vm.Order.Status.ToLower()">
+                        @switch (vm.Order.Status)
+                        {
+                            case "OnHold":
+                                {
+                                    <text>⏳ On Hold</text>
+                                    break;
+                                }
+                            case "Cooking":
+                                {
+
+                                    <text>🍳 Cooking</text>
+                                    break;
+                                }
+                            case "Delivering":
+                                {
+
+                                    <text>🛵 Delivering</text>
+                                    break;
+                                }
+                            case "AtDoorstep":
+                                {
+
+                                    <text>🚪 At Doorstep</text>
+                                    break;
+                                }
+                            default:
+                                {
+
+                                    <text>📦 @vm.Order.Status</text>
+                                    break;
+                                }
+                        }
+                    </span>
+                </div>
+
+                @{
+                    var statuses = new[] { "OnHold", "Cooking", "Delivering", "AtDoorstep" };
+                    var currentIdx = Array.IndexOf(statuses, vm.Order.Status);
+                }
+
+                <div class="progress-bar">
+                    @for (int i = 0; i < statuses.Length; i++)
+                    {
+                        var isDone = i <= currentIdx;
+                        var label = statuses[i] switch
+                        {
+                            "OnHold" => "On Hold",
+                            "Cooking" => "Cooking",
+                            "Delivering" => "Delivering",
+                            "AtDoorstep" => "At Doorstep",
+                            _ => statuses[i]
+                        };
+                        <div class="progress-step @(isDone ? "done" : "")">
+                            <div class="step-dot"></div>
+                            <span>@label</span>
+                        </div>
+                        if (i < statuses.Length - 1)
+                        {
+                            <div class="progress-line @(i < currentIdx ? "done" : "")"></div>
+                        }
+                    }
+                </div>
+
+                <div class="order-items">
+                    @foreach (var oi in vm.Order.OrderItems)
+                    {
+                        <div class="order-item-row">
+                            <span>
+                                <i class="fa-solid fa-circle-dot" style="color:var(--primary);font-size:0.6rem"></i>
+                                @oi.MenuItem?.Name × @oi.Quantity
+                            </span>
+                            <span>EGP @((oi.UnitPrice * oi.Quantity).ToString("F2"))</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="order-footer">
+                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap">
+                        <span class="payment-badge">
+                            <i class="fa-solid @(vm.Order.PaymentMethod == "Cash" ? "fa-money-bill-wave" : "fa-credit-card")"></i>
+                            @vm.Order.PaymentMethod
+                        </span>
+                        <strong style="color:var(--primary)">
+                            Total: EGP @vm.Order.TotalAmount.ToString("F2")
+                        </strong>
+                    </div>
+
+                    @if (vm.CanCancel)
+                    {
+                        <div class="cancel-section">
+                            <div class="timer"
+                                 id="timer-@vm.Order.OrderId"
+                                 data-seconds="@((int)(vm.TimeRemaining?.TotalSeconds ?? 0))">
+                                <i class="fa-solid fa-clock"></i>
+                                <span id="time-@vm.Order.OrderId">--:--</span> to cancel
+                            </div>
+                            <button class="btn-danger"
+                                    onclick="cancelOrder(@vm.Order.OrderId)">
+                                <i class="fa-solid fa-xmark"></i> Cancel Order
+                            </button>
+                        </div>
+                    }
+                    else if (vm.Order.Status == "OnHold")
+                    {
+                        <span class="expired-note">
+                            <i class="fa-solid fa-lock"></i> Cancellation window expired
+                        </span>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.timer[data-seconds]').forEach(function (el) {
+            var secs = parseInt(el.dataset.seconds);
+            var orderId = el.id.split('-')[1];
+            var span = document.getElementById('time-' + orderId);
+
+            if (secs <= 0) {
+                el.closest('.cancel-section').innerHTML =
+                    '<span class="expired-note"><i class="fa-solid fa-lock"></i> Cancellation window expired</span>';
+                return;
+            }
+
+            var interval = setInterval(function () {
+                if (secs <= 0) {
+                    clearInterval(interval);
+                    var section = el.closest('.cancel-section');
+                    if (section) section.innerHTML =
+                        '<span class="expired-note"><i class="fa-solid fa-lock"></i> Cancellation window expired</span>';
+                    return;
+                }
+                var m = Math.floor(secs / 60);
+                var s = secs % 60;
+                if (span) span.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                secs--;
+            }, 1000);
+        });
+
+        function cancelOrder(id) {
+            if (!confirm('Are you sure you want to cancel this order?')) return;
+            fetch('/Order/Cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'orderId=' + id
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) location.reload();
+                    else alert(data.message);
+                });
+        }
+    </script>
+}

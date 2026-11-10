@@ -1,0 +1,61 @@
+﻿@model List<Shawermawy.Models.Review>
+@{
+    ViewData["Title"] = "Customer Reports";
+}
+
+<div class="page-header">
+    <h1><i class="fa-solid fa-flag"></i> Customer Reports & Reviews</h1>
+    <p>Total: @Model.Count submissions</p>
+</div>
+
+<div class="reviews-filter">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="Review"><i class="fa-solid fa-star"></i> Reviews</button>
+    <button class="filter-btn" data-filter="Report"><i class="fa-solid fa-flag"></i> Reports</button>
+    <button class="filter-btn" data-filter="Suggestion"><i class="fa-solid fa-lightbulb"></i> Suggestions</button>
+</div>
+
+<div class="reviews-grid">
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <i class="fa-solid fa-inbox"></i>
+            <h2>No feedback yet</h2>
+        </div>
+    }
+    else
+    {
+        @foreach (var r in Model)
+        {
+            <div class="review-card" data-type="@r.Type">
+                <div class="review-card-header">
+                    <span class="review-type type-@r.Type.ToLower()">
+                        @(r.Type == "Review" ? "⭐" : r.Type == "Report" ? "🚩" : "💡") @r.Type
+                    </span>
+                    <span class="review-date">@r.CreatedAt.ToString("dd MMM yyyy")</span>
+                </div>
+                <h3>@r.Title</h3>
+                <p>@r.Message</p>
+                <div class="review-card-footer">
+                    <span><i class="fa-solid fa-user"></i> @r.User?.Username</span>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const filter = this.dataset.filter;
+                document.querySelectorAll('.review-card').forEach(card => {
+                    card.style.display =
+                        (filter === 'all' || card.dataset.type === filter) ? 'block' : 'none';
+                });
+            });
+        });
+    </script>
+}
